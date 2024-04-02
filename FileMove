@@ -1,0 +1,55 @@
+import java.io.*;
+import java.util.Properties;
+
+public class FileMove {
+    public static void main(String[] args) {
+        try {
+            // Load properties from config.properties file
+            Properties properties = new Properties();
+            properties.load(new FileInputStream("C:\\Users\\config.properties"));
+
+            // Get the search directory path
+            String searchDirectory = properties.getProperty("searchDirectory");
+
+            // Iterate through properties to find mappings
+            for (String key : properties.stringPropertyNames()) {
+                if (key.startsWith("keyword")) {
+                    String keyword = properties.getProperty(key);
+                    String destinationKey = key.replace("keyword", "destination");
+                    String destinationPath = properties.getProperty(destinationKey);
+
+                    // Search for files containing the keyword
+                    File[] matchingFiles = searchFilesContainingKeyword(searchDirectory, keyword);
+
+                    // Move matching files to the destination path
+                    for (File file : matchingFiles) {
+                        moveFile(file, new File(destinationPath));
+                        System.out.println("Moved file: " + file.getName() + " to: " + destinationPath);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static File[] searchFilesContainingKeyword(String searchDirectory, String keyword) {
+        // Specify the directory to search for files containing the keyword
+        File directory = new File(searchDirectory);
+
+        // List files in the directory that contain the keyword in their names
+        File[] matchingFiles = directory.listFiles((dir, name) -> name.contains(keyword));
+        return matchingFiles != null ? matchingFiles : new File[0];
+    }
+
+    private static void moveFile(File sourceFile, File destinationDir) throws IOException {
+        // Create destination directory if it does not exist
+        if (!destinationDir.exists()) {
+            destinationDir.mkdirs();
+        }
+
+        // Move the file to the destination directory
+        File destinationFile = new File(destinationDir, sourceFile.getName());
+        sourceFile.renameTo(destinationFile);
+    }
+}
