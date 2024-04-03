@@ -1,12 +1,13 @@
 import java.io.*;
-import java.util.Properties;
+import java.nio.file.*;
+import java.util.*;
 
-public class FileMove {
+public class FileCopyLatest {
     public static void main(String[] args) {
         try {
             // Load properties from config.properties file
             Properties properties = new Properties();
-            properties.load(new FileInputStream("C:\\Users\\config.properties"));
+            properties.load(new FileInputStream("config.properties"));
 
             // Get the search directory path
             String searchDirectory = properties.getProperty("searchDirectory");
@@ -21,10 +22,16 @@ public class FileMove {
                     // Search for files containing the keyword
                     File[] matchingFiles = searchFilesContainingKeyword(searchDirectory, keyword);
 
-                    // Move matching files to the destination path
-                    for (File file : matchingFiles) {
-                        moveFile(file, new File(destinationPath));
-                        System.out.println("Moved file: " + file.getName() + " to: " + destinationPath);
+                    // Copy the latest file to the destination path
+                    File latestFile = getLatestFileWithCopy(matchingFiles);
+                    if (latestFile != null) {
+                        File destinationFolder = new File(destinationPath);
+                        if (!destinationFolder.exists()) {
+                            destinationFolder.mkdirs(); // Create destination folder if it doesn't exist
+                        }
+                        File destinationFile = new File(destinationPath, latestFile.getName());
+                        copyFile(latestFile, destinationFile);
+                        System.out.println("Copied latest file with 'Copy': " + latestFile.getName() + " to: " + destinationPath);
                     }
                 }
             }
@@ -34,22 +41,42 @@ public class FileMove {
     }
 
     private static File[] searchFilesContainingKeyword(String searchDirectory, String keyword) {
-        // Specify the directory to search for files containing the keyword
+        List<File> matchingFilesList = new ArrayList<>();
         File directory = new File(searchDirectory);
-
-        // List files in the directory that contain the keyword in their names
-        File[] matchingFiles = directory.listFiles((dir, name) -> name.contains(keyword));
-        return matchingFiles != null ? matchingFiles : new File[0];
+        searchFiles(directory, keyword, matchingFilesList);
+        return matchingFilesList.toArray(new File[0]);
     }
 
-    private static void moveFile(File sourceFile, File destinationDir) throws IOException {
-        // Create destination directory if it does not exist
-        if (!destinationDir.exists()) {
-            destinationDir.mkdirs();
+    private static void searchFiles(File directory, String keyword, List<File> matchingFilesList) {
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    searchFiles(file, keyword, matchingFilesList);
+                } else if (file.getName().startsWith(keyword) && file.getName().contains("Copy")) {
+                    matchingFilesList.add(file);
+                }
+            }
         }
+    }
 
-        // Move the file to the destination directory
-        File destinationFile = new File(destinationDir, sourceFile.getName());
-        sourceFile.renameTo(destinationFile);
+    private static File getLatestFileWithCopy(File[] files) {
+        File latestFile = null;
+        long latestTimestamp = Long.MIN_VALUE;
+        for (File file : files) {
+            if (file.getName().matches(".*Copy\\..*")) {
+                if (file.lastModified() > latestTimestamp) {
+                    latestTimestamp = file.lastModified();
+                    latestFile = file;
+                }
+            }
+        }
+        return latestFile;
+    }
+
+    private static void copyFile(File sourceFile, File destinationFile) throws IOException {
+        Path sourcePath = sourceFile.toPath();
+        Path destinationPath = destinationFile.toPath();
+        Files.copy(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
     }
 }
