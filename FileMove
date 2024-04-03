@@ -7,7 +7,7 @@ public class FileCopyLatest {
         try {
             // Load properties from config.properties file
             Properties properties = new Properties();
-            properties.load(new FileInputStream("config.properties"));
+            properties.load(new FileInputStream("path\config.properties"));
 
             // Get the search directory path
             String searchDirectory = properties.getProperty("searchDirectory");
@@ -15,23 +15,25 @@ public class FileCopyLatest {
             // Iterate through properties to find mappings
             for (String key : properties.stringPropertyNames()) {
                 if (key.startsWith("keyword")) {
-                    String keyword = properties.getProperty(key);
-                    String destinationKey = key.replace("keyword", "destination");
-                    String destinationPath = properties.getProperty(destinationKey);
+                    String[] keywords = properties.getProperty(key).split(",");
+                    for (String keyword : keywords) {
+                        String destinationKey = key.replace("keyword", "destination");
+                        String destinationPath = properties.getProperty(destinationKey);
 
-                    // Search for files containing the keyword
-                    File[] matchingFiles = searchFilesContainingKeyword(searchDirectory, keyword);
+                        // Search for files containing the keyword
+                        File[] matchingFiles = searchFilesContainingKeyword(searchDirectory, keyword.trim());
 
-                    // Copy the latest file to the destination path
-                    File latestFile = getLatestFileWithCopy(matchingFiles);
-                    if (latestFile != null) {
-                        File destinationFolder = new File(destinationPath);
-                        if (!destinationFolder.exists()) {
-                            destinationFolder.mkdirs(); // Create destination folder if it doesn't exist
+                        // Copy the latest file to the destination path
+                        File latestFile = getLatestFileWithCopy(matchingFiles);
+                        if (latestFile != null) {
+                            File destinationFolder = new File(destinationPath);
+                            if (!destinationFolder.exists()) {
+                                destinationFolder.mkdirs(); // Create destination folder if it doesn't exist
+                            }
+                            File destinationFile = new File(destinationPath, latestFile.getName());
+                            copyFile(latestFile, destinationFile);
+                            System.out.println("Copied latest file with keyword '" + keyword.trim() + "': " + latestFile.getName() + " to: " + destinationPath);
                         }
-                        File destinationFile = new File(destinationPath, latestFile.getName());
-                        copyFile(latestFile, destinationFile);
-                        System.out.println("Copied latest file with 'Copy': " + latestFile.getName() + " to: " + destinationPath);
                     }
                 }
             }
@@ -53,7 +55,7 @@ public class FileCopyLatest {
             for (File file : files) {
                 if (file.isDirectory()) {
                     searchFiles(file, keyword, matchingFilesList);
-                } else if (file.getName().startsWith(keyword) && file.getName().contains("Copy")) {
+                } else if (file.getName().contains(keyword)) {
                     matchingFilesList.add(file);
                 }
             }
@@ -69,6 +71,9 @@ public class FileCopyLatest {
                     latestTimestamp = file.lastModified();
                     latestFile = file;
                 }
+            }else {
+            	
+            	latestFile = file;
             }
         }
         return latestFile;
